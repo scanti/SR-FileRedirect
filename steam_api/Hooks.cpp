@@ -5,25 +5,40 @@
 #pragma comment(lib,"Shlwapi.lib")
 
 char LooseDirectory[MAX_PATH];
+size_t LooseDirectoryLength=0;
 char MainDirectory[MAX_PATH];
+size_t MainDirectoryLength=0;
 
 bool WinMainCalled=false;
 
 void SetMainDirectory(char *filepath)
 {
-	if(filepath)
+	if(filepath && filepath[0])
 	{
-		strcpy_s(MainDirectory,MAX_PATH,filepath);
-		if(strlen(MainDirectory)>0 && MainDirectory[strlen(MainDirectory)-1]!='\\')
-			strcat_s(MainDirectory,MAX_PATH,"\\");
+		// Store length of string as memcpy is quicker than strcpy when used multiple times.
+		MainDirectoryLength=strlen(filepath);
+		memcpy(MainDirectory,filepath,MainDirectoryLength+1);
+		if(MainDirectory[MainDirectoryLength-1]!='\\')
+		{
+			MainDirectory[MainDirectoryLength++]='\\';
+			MainDirectory[MainDirectoryLength]=0;
+		}
 	}
 	else
+	{
 		MainDirectory[0]=0;
+		MainDirectoryLength=0;
+	}
 }
 
 char *GetMainDirectory()
 {
 	return(MainDirectory);
+}
+
+size_t GetMainDirLen()
+{
+	return(MainDirectoryLength);
 }
 
 void SetLooseDirectory(char *filepath)
@@ -51,7 +66,7 @@ HANDLE WINAPI Vanilla_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD 
 	if ((_strnicmp(lpFileName,"packfiles",9)!=0) && (_strnicmp(lpFileName,"display.ini",11)!=0) && 
 		PathIsRelativeA(lpFileName) && ((dwDesiredAccess&GENERIC_READ)==GENERIC_READ))
 	{
-		//PrintLog("Opening flie %s returning file not found.\n",lpFileName);
+		//PrintLog("Opening file %s - returning file not found.\n",lpFileName);
 		return(INVALID_HANDLE_VALUE);		
 	}
 	
@@ -65,7 +80,7 @@ BOOL WINAPI Vanilla_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEVE
 	if ((_strnicmp(lpFileName,"packfiles",9)!=0) && (_strnicmp(lpFileName,"display.ini",11)!=0) && 
 		PathIsRelativeA(lpFileName))
 	{
-		//PrintLog("Looking for %s returning file not found.\n",lpFileName);
+		//PrintLog("Looking for %s - returning file not found.\n",lpFileName);
 		SetLastError(ERROR_FILE_NOT_FOUND);
 		return(false);
 	}
@@ -83,8 +98,8 @@ HANDLE WINAPI MainOnly_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD
 
 	if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
 	{
-		strcpy_s(NewFileName,MAX_PATH,GetMainDirectory());
-		strcat_s(NewFileName,MAX_PATH,lpFileName);
+		memcpy(NewFileName,MainDirectory,MainDirectoryLength);
+		strcpy(NewFileName+MainDirectoryLength,lpFileName);
 
 		if (_strnicmp(lpFileName,"packfiles",9)==0)
 		{
@@ -107,7 +122,8 @@ HANDLE WINAPI MainOnly_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD
 	}
 	else
 	{
-		strcpy_s(NewFileName,MAX_PATH,lpFileName);
+		return(CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
 	}
 	
 	//PrintLog("CreateFileA - %s\n",NewFileName);
@@ -122,20 +138,26 @@ BOOL WINAPI MainOnly_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEV
 
 	if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
 	{
-		strcpy_s(NewFileName,MAX_PATH,GetMainDirectory());
-		strcat_s(NewFileName,MAX_PATH,lpFileName);
+		// Generate new path for relative file.
+		memcpy(NewFileName,MainDirectory,MainDirectoryLength);
+		strcpy(NewFileName+MainDirectoryLength,lpFileName);
 		
+		// vpp_pc files are in the packfiles\pc\cache directory.
+		// Only check "packfiles" as quicker and whole path not needed.
 		if (_strnicmp(lpFileName,"packfiles",9)==0)
 		{
+			// File path is looking in the packfiles directory.
 			PrintLog("Looking for packfile in %s ",NewFileName);
 		
 			if(GetFileAttributesExA(NewFileName,fInfoLevelId,lpFileInformation))
 			{
+				// Packfile exists in redirected directory. So return with info.
 				PrintLog("found\n");
 				return(true);
 			}
 			else
 			{
+				// Packfile doesn't exist in redirected directory so try the original.
 				PrintLog("not found\nLooking in %s\n",lpFileName);
 				return(GetFileAttributesExA(lpFileName,fInfoLevelId,lpFileInformation));
 			}
@@ -143,9 +165,11 @@ BOOL WINAPI MainOnly_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEV
 	}
 	else
 	{
-		strcpy_s(NewFileName,MAX_PATH,lpFileName);
+		// File is "display.ini" or has a full path. So don't redirect.
+		return(GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation));
 	}
 
+	// Not a packfile so look in the redirected directory.
 	//PrintLog("GetFileAttributesExA - %s\n",NewFileName);
 	return(GetFileAttributesExA(NewFileName, fInfoLevelId, lpFileInformation));
 };

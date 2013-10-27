@@ -6,6 +6,7 @@ void SetLooseDirectory(char *filepath);
 char *GetLooseDirectory();
 void SetMainDirectory(char *filepath);
 char *GetMainDirectory();
+size_t GetMainDirLen();
 
 HANDLE WINAPI Vanilla_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,
 						 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
