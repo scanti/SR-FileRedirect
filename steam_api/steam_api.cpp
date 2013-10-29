@@ -192,16 +192,30 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 			}
 			if(!Vanilla)
 			{
-				if (HookMain && !HookLoose)
+				if (HookMain)
 				{
-					PrintLog("Hooking filing system for Base only redirection.\n");
-					if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
-							(void *)MainOnly_CreateFileA,&old_proc)==S_OK)
+					if(HookLoose)
+					{
+						PrintLog("Hooking filing system for redirection.\n");
+						if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
+									(void *)Redirect_CreateFileA,&old_proc)==S_OK)
 						PrintLog("Patched Kernel32.CreateFileA\n");
 
-					if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
-							(void *)MainOnly_GetFileAttributesExA,&old_proc)==S_OK)
-						PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+						if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
+								(void *)Redirect_GetFileAttributesExA,&old_proc)==S_OK)
+							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+					}
+					else
+					{
+						PrintLog("Hooking filing system for Base only redirection.\n");
+						if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
+								(void *)MainOnly_CreateFileA,&old_proc)==S_OK)
+							PrintLog("Patched Kernel32.CreateFileA\n");
+
+						if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
+								(void *)MainOnly_GetFileAttributesExA,&old_proc)==S_OK)
+							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+					}
 				}
 			}
 			else

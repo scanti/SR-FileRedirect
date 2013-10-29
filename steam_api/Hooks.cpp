@@ -43,14 +43,22 @@ size_t GetMainDirLen()
 
 void SetLooseDirectory(char *filepath)
 {
-	if(filepath)
+	if(filepath && filepath[0])
 	{
-		strcpy_s(LooseDirectory,MAX_PATH,filepath);
-		if(strlen(LooseDirectory)>0 && LooseDirectory[strlen(LooseDirectory)-1]!='\\')
-			strcat_s(LooseDirectory,MAX_PATH,"\\");
+		// Store length of string as memcpy is quicker than strcpy when used multiple times.
+		LooseDirectoryLength=strlen(filepath);
+		memcpy(LooseDirectory,filepath,LooseDirectoryLength+1);
+		if(LooseDirectory[LooseDirectoryLength-1]!='\\')
+		{
+			LooseDirectory[LooseDirectoryLength++]='\\';
+			LooseDirectory[LooseDirectoryLength]=0;
+		}
 	}
 	else
+	{
 		LooseDirectory[0]=0;
+		LooseDirectoryLength=0;
+	}
 }
 
 char *GetLooseDirectory()
@@ -114,7 +122,7 @@ HANDLE WINAPI MainOnly_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD
 			}
 			else
 			{
-				PrintLog("not found\nLoading from %s\n",lpFileName);
+				PrintLog("not found\n>   Loading from %s\n",lpFileName);
 				return(CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
 					dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
 			}
@@ -174,6 +182,95 @@ BOOL WINAPI MainOnly_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEV
 	return(GetFileAttributesExA(NewFileName, fInfoLevelId, lpFileInformation));
 };
 
+HANDLE WINAPI Redirect_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,
+						 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+						 DWORD dwFlagsAndAttributes,HANDLE hTemplateFile)
+
+{
+	char NewFileName[MAX_PATH];
+	HANDLE HandleTest;
+
+	if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
+	{
+		memcpy(NewFileName,MainDirectory,MainDirectoryLength);
+		strcpy(NewFileName+MainDirectoryLength,lpFileName);
+
+		PrintLog("Loading file from %s ",NewFileName);
+
+		HandleTest = CreateFileA(NewFileName, dwDesiredAccess, dwShareMode, 
+			lpSecurityAttributes,dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		if(HandleTest!=INVALID_HANDLE_VALUE)
+		{
+			PrintLog("found\n");
+			return(HandleTest);
+		}
+
+		memcpy(NewFileName,LooseDirectory,LooseDirectoryLength);
+		strcpy(NewFileName+LooseDirectoryLength,lpFileName);
+		PrintLog("not found\n>   Loading from %s ",NewFileName);
+		
+		HandleTest = CreateFileA(NewFileName, dwDesiredAccess, dwShareMode, 
+			lpSecurityAttributes,dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
+		if((HandleTest!=INVALID_HANDLE_VALUE))
+		{
+			PrintLog("found\n");
+			return(HandleTest);
+		}
+
+		if(_strnicmp(lpFileName,"packfiles",9)!=0)
+		{
+			PrintLog("returning not found\n");
+			return(HandleTest);
+		}
+
+		PrintLog("not found\n>>      Loading from %s\n",lpFileName);
+	}
+		
+	return(CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
+}
+
+BOOL WINAPI Redirect_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
+								LPVOID lpFileInformation)
+{
+	char NewFileName[MAX_PATH];
+
+
+if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
+	{
+		memcpy(NewFileName,MainDirectory,MainDirectoryLength);
+		strcpy(NewFileName+MainDirectoryLength,lpFileName);
+
+		PrintLog("Looking for file %s ",NewFileName);
+
+		if(GetFileAttributesExA(NewFileName,fInfoLevelId,lpFileInformation))
+		{
+			PrintLog("found\n");
+			return(true);
+		}
+
+		memcpy(NewFileName,LooseDirectory,LooseDirectoryLength);
+		strcpy(NewFileName+LooseDirectoryLength,lpFileName);
+		PrintLog("not found\n>   Looking for %s ",NewFileName);
+		
+		if(GetFileAttributesExA(NewFileName,fInfoLevelId,lpFileInformation))
+		{
+			PrintLog("found\n");
+			return(true);
+		}
+
+		if(_strnicmp(lpFileName,"packfiles",9)!=0)
+		{
+			PrintLog("returning not found\n");
+			return(false);
+		}
+
+		PrintLog("not found\n>>      Loading for %s\n",lpFileName);
+	}
+
+	return(GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation));
+};
+
 LPSTR WINAPI New_GetCommandLineA(void)
 {
 	if (!WinMainCalled)
@@ -184,54 +281,3 @@ LPSTR WINAPI New_GetCommandLineA(void)
 
 	return(GetCommandLineA());
 }
-
-/*
-HANDLE WINAPI New_CreateFileW(LPCWSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,
-						 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
-						 DWORD dwFlagsAndAttributes,HANDLE hTemplateFile)
-
-{
-	//PrintLog("CreateFileW - %S\n",lpFileName);
-	return(CreateFileW(lpFileName,dwDesiredAccess,dwShareMode,lpSecurityAttributes,
-		dwCreationDisposition,dwFlagsAndAttributes,hTemplateFile));
-}
-
-HANDLE WINAPI New_FindFirstFileA(LPCSTR lpFileName, LPWIN32_FIND_DATAA lpFindFileData)
-{
-	//PrintLog("FindFirstFileA - %s\n",lpFileName);
-	return(FindFirstFileA(lpFileName,lpFindFileData));
-};
-
-HANDLE WINAPI New_FindFirstFileExA(LPCSTR lpFileName,FINDEX_INFO_LEVELS fInfoLevelId, 
-							  LPVOID lpFindFileData, FINDEX_SEARCH_OPS fSearchOp,
-							  LPVOID lpSearchFilter, DWORD dwAdditionalFlags)
-{
-	//PrintLog("FindFirstFileExA - %s\n",lpFileName);
-	return(FindFirstFileExA(lpFileName, fInfoLevelId, lpFindFileData,fSearchOp,lpSearchFilter,
-		dwAdditionalFlags));
-};
-
-DWORD WINAPI New_GetFileAttributesA(LPCSTR lpFileName)
-{
-	//PrintLog("GetFileAttributesA - %s\n",lpFileName);
-	return(GetFileAttributesA(lpFileName));
-};
-
-HMODULE WINAPI New_LoadLibraryA(LPCSTR lpFileName)
-{
-	PrintLog("LoadLibraryA - %s\n",lpFileName);
-	return(LoadLibraryA(lpFileName));
-};
-
-HMODULE WINAPI New_LoadLibraryW(LPCWSTR lpFileName)
-{
-	PrintLog("LoadLibraryW - %S\n",lpFileName);
-	return(LoadLibraryW(lpFileName));
-};
-
-FARPROC WINAPI New_GetProcAddress(HMODULE hModule,LPCSTR lpProcName)
-{
-	PrintLog("GetProcAddress - %s\n",lpProcName);
-	return(GetProcAddress(hModule,lpProcName));
-};
-*/
