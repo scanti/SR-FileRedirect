@@ -1,8 +1,8 @@
 #include "Hooks.h"
 #include "FileLogger.h"
 #include "Shlwapi.h"
-
 #pragma comment(lib,"Shlwapi.lib")
+#include "iat_functions.h"
 
 char LooseDirectory[MAX_PATH];
 size_t LooseDirectoryLength=0;
@@ -10,6 +10,11 @@ char MainDirectory[MAX_PATH];
 size_t MainDirectoryLength=0;
 
 bool WinMainCalled=false;
+
+union {
+	void *set;
+	int (*func)(void);
+} Old_SteamAPI_Shutdown;
 
 void SetMainDirectory(char *filepath)
 {
@@ -111,18 +116,18 @@ HANDLE WINAPI MainOnly_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD
 
 		if (_strnicmp(lpFileName,"packfiles",9)==0)
 		{
-			PrintLog("Loading packfile in %s ",NewFileName);
+			//PrintLog("Loading packfile in %s ",NewFileName);
 
 			HandleTest = CreateFileA(NewFileName, dwDesiredAccess, dwShareMode, 
 				lpSecurityAttributes,dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 			if(HandleTest!=INVALID_HANDLE_VALUE)
 			{
-				PrintLog("found\n");
+				//PrintLog("found\n");
 				return(HandleTest);
 			}
 			else
 			{
-				PrintLog("not found\n>   Loading from %s\n",lpFileName);
+				//PrintLog("not found\n>   Loading from %s\n",lpFileName);
 				return(CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
 					dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
 			}
@@ -155,18 +160,18 @@ BOOL WINAPI MainOnly_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEV
 		if (_strnicmp(lpFileName,"packfiles",9)==0)
 		{
 			// File path is looking in the packfiles directory.
-			PrintLog("Looking for packfile in %s ",NewFileName);
+			//PrintLog("Looking for packfile in %s ",NewFileName);
 		
 			if(GetFileAttributesExA(NewFileName,fInfoLevelId,lpFileInformation))
 			{
 				// Packfile exists in redirected directory. So return with info.
-				PrintLog("found\n");
+				//PrintLog("found\n");
 				return(true);
 			}
 			else
 			{
 				// Packfile doesn't exist in redirected directory so try the original.
-				PrintLog("not found\nLooking in %s\n",lpFileName);
+				//PrintLog("not found\nLooking in %s\n",lpFileName);
 				return(GetFileAttributesExA(lpFileName,fInfoLevelId,lpFileInformation));
 			}
 		}
@@ -195,35 +200,35 @@ HANDLE WINAPI Redirect_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD
 		memcpy(NewFileName,MainDirectory,MainDirectoryLength);
 		strcpy(NewFileName+MainDirectoryLength,lpFileName);
 
-		PrintLog("Loading file from %s ",NewFileName);
+		//PrintLog("Loading file from %s ",NewFileName);
 
 		HandleTest = CreateFileA(NewFileName, dwDesiredAccess, dwShareMode, 
 			lpSecurityAttributes,dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 		if(HandleTest!=INVALID_HANDLE_VALUE)
 		{
-			PrintLog("found\n");
+			//PrintLog("found\n");
 			return(HandleTest);
 		}
 
 		memcpy(NewFileName,LooseDirectory,LooseDirectoryLength);
 		strcpy(NewFileName+LooseDirectoryLength,lpFileName);
-		PrintLog("not found\n>   Loading from %s ",NewFileName);
+		//PrintLog("not found\n>   Loading from %s ",NewFileName);
 		
 		HandleTest = CreateFileA(NewFileName, dwDesiredAccess, dwShareMode, 
 			lpSecurityAttributes,dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 		if((HandleTest!=INVALID_HANDLE_VALUE))
 		{
-			PrintLog("found\n");
+			//PrintLog("found\n");
 			return(HandleTest);
 		}
 
 		if(_strnicmp(lpFileName,"packfiles",9)!=0)
 		{
-			PrintLog("returning not found\n");
+			//PrintLog("returning not found\n");
 			return(HandleTest);
 		}
 
-		PrintLog("not found\n>>      Loading from %s\n",lpFileName);
+		//PrintLog("not found\n>>      Loading from %s\n",lpFileName);
 	}
 		
 	return(CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
@@ -241,31 +246,31 @@ if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
 		memcpy(NewFileName,MainDirectory,MainDirectoryLength);
 		strcpy(NewFileName+MainDirectoryLength,lpFileName);
 
-		PrintLog("Looking for file %s ",NewFileName);
+		//PrintLog("Looking for file %s ",NewFileName);
 
 		if(GetFileAttributesExA(NewFileName,fInfoLevelId,lpFileInformation))
 		{
-			PrintLog("found\n");
+			//PrintLog("found\n");
 			return(true);
 		}
 
 		memcpy(NewFileName,LooseDirectory,LooseDirectoryLength);
 		strcpy(NewFileName+LooseDirectoryLength,lpFileName);
-		PrintLog("not found\n>   Looking for %s ",NewFileName);
+		//PrintLog("not found\n>   Looking for %s ",NewFileName);
 		
 		if(GetFileAttributesExA(NewFileName,fInfoLevelId,lpFileInformation))
 		{
-			PrintLog("found\n");
+			//PrintLog("found\n");
 			return(true);
 		}
 
 		if(_strnicmp(lpFileName,"packfiles",9)!=0)
 		{
-			PrintLog("returning not found\n");
+			//PrintLog("returning not found\n");
 			return(false);
 		}
 
-		PrintLog("not found\n>>      Loading for %s\n",lpFileName);
+		//PrintLog("not found\n>>      Loading for %s\n",lpFileName);
 	}
 
 	return(GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation));
@@ -273,11 +278,21 @@ if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
 
 LPSTR WINAPI New_GetCommandLineA(void)
 {
-	if (!WinMainCalled)
-	{
-		PrintLog("Hooked WinMain via GetCommandLineA\n");
-		WinMainCalled=true;
-	}
+	if (WinMainCalled)
+		return(GetCommandLineA());
+	
+	PrintLog("Hooked WinMain via GetCommandLineA\n");
+	WinMainCalled=true;
+	
+	if(PatchIat(GetModuleHandleA(NULL),"steam_api.dll","SteamAPI_Shutdown",
+		(void *)QuittingGameHook, &Old_SteamAPI_Shutdown.set)==S_OK)
+		PrintLog("Patched steam_api.dll:SteamAPI_Shutdown.\n");
 
 	return(GetCommandLineA());
+}
+
+int _stdcall QuittingGameHook()
+{
+	PrintLog("Hooked game quitting via SteamAPI_Shutdown.\n");
+	return (Old_SteamAPI_Shutdown.func());
 }

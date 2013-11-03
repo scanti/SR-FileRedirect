@@ -31,3 +31,4 @@ BOOL WINAPI Redirect_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEV
 
 
 LPSTR WINAPI New_GetCommandLineA(void);
+int _stdcall QuittingGameHook();
