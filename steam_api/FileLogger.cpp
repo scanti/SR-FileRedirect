@@ -19,6 +19,13 @@ bool PrintLog(char *message,...)
 	if (log_handle)
 		vfprintf(log_handle,message, args);
 
+// If we are debugging we could be crashing, so make sure the log file data is written so soon as possible. Otherwise
+// important debugging info could get lost in the crash.
+
+#ifdef _DEBUG
+	fflush(log_handle);
+#endif
+
     va_end(args);
 
 	if(log_handle)

@@ -3,13 +3,14 @@
 #include "Shlwapi.h"
 #pragma comment(lib,"Shlwapi.lib")
 #include "iat_functions.h"
+#include "plug_ins.h"
 
 char LooseDirectory[MAX_PATH];
 size_t LooseDirectoryLength=0;
 char MainDirectory[MAX_PATH];
 size_t MainDirectoryLength=0;
 
-bool WinMainCalled=false;
+int WinMainCount=0;
 
 union {
 	void *set;
@@ -278,15 +279,29 @@ if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
 
 LPSTR WINAPI New_GetCommandLineA(void)
 {
-	if (WinMainCalled)
+// The first time called it's by the CRT initialisation routines. This means the system is in
+// an undefined state.
+
+	if (WinMainCount==0)
+	{
+		WinMainCount++;
+		PrintLog("GetCommandLineA called by CRT init.\n");
 		return(GetCommandLineA());
-	
-	PrintLog("Hooked WinMain via GetCommandLineA\n");
-	WinMainCalled=true;
-	
-	if(PatchIat(GetModuleHandleA(NULL),"steam_api.dll","SteamAPI_Shutdown",
-		(void *)QuittingGameHook, &Old_SteamAPI_Shutdown.set)==S_OK)
-		PrintLog("Patched steam_api.dll:SteamAPI_Shutdown.\n");
+	}
+
+// We want the second time it is called. This means it's being called by WinMain.
+
+	if(WinMainCount==1)
+	{
+		PrintLog("Hooked WinMain via GetCommandLineA\n");
+		
+		if(PatchIat(GetModuleHandleA(NULL),"steam_api.dll","SteamAPI_Shutdown",
+			(void *)QuittingGameHook, &Old_SteamAPI_Shutdown.set)==S_OK)
+			PrintLog("Patched steam_api.dll:SteamAPI_Shutdown.\n");
+
+		PrintLog("Saints Row Version = %i\n",GetSRVersion());
+		WinMainCount++;
+	}
 
 	return(GetCommandLineA());
 }
