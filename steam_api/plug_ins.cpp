@@ -1,33 +1,42 @@
 #include "plug_ins.h"
 #include "FileLogger.h"
 #include "MemoryFunctions.h"
+#pragma comment(lib,"Version.lib")
 
 int GetSRVersion()
 {
-	char *Version;
-	char *Ident;
+	HMODULE hMod;
+	HRSRC hResInfo;
+	DWORD dwSize;
+	HGLOBAL hResData;
+	LPVOID pRes, pResCopy;
+	UINT uLen;
+	VS_FIXEDFILEINFO *lpFfi;
 
-// __try, __except block doesn't work. Will have to manually check if memory address is within
-// .rdata or .data to avoid access violations.
+	hMod=GetModuleHandleA(NULL);
 
-	//Version=(char *)0x05407b10;
-	Version=(char *)0x0;
-	Ident=(char *)0x05407b14;
+	hResInfo = FindResource(hMod, MAKEINTRESOURCE(1), RT_VERSION);
+	dwSize = SizeofResource(hMod, hResInfo);
+	hResData = LoadResource(hMod, hResInfo);
+	pRes = LockResource(hResData);
+	pResCopy = LocalAlloc(LMEM_FIXED, dwSize);
+	CopyMemory(pResCopy, pRes, dwSize);
+	FreeResource(hResData);
 
-	if(isNotOKToReadMemory(Version,2))
-	{
-		PrintLog("ERROR - Version pointer invalid.\n");
-		return(-1);
-	}
+	VerQueryValue(pResCopy, TEXT("\\"), (LPVOID*)&lpFfi, &uLen);
 
-	if(isNotOKToReadMemory(Ident,4))
-	{
-		PrintLog("ERROR - Ident pointer invalid.\n");
-		return(-1);
-	}
+	PrintLog("Query length = %i\n",uLen);
 
-	if(_strnicmp(Version,"07",2)==0 && _strnicmp(Ident,"SR35",4)==0)
-		return(7);
-	
-	return(-1);
+	DWORD dwFileVersionMS = lpFfi->dwFileVersionMS;
+	DWORD dwFileVersionLS = lpFfi->dwFileVersionLS;
+
+	DWORD dw1 = HIWORD(dwFileVersionMS);
+	DWORD dw2 = LOWORD(dwFileVersionMS);
+	DWORD dw3 = HIWORD(dwFileVersionLS);
+	DWORD dw4 = LOWORD(dwFileVersionLS);
+
+	//PrintLog("Version %i.%i.%i.%i\n",dw1,dw2,dw3,dw4);
+
+	LocalFree(pResCopy);
+	return(dw3);
 }
