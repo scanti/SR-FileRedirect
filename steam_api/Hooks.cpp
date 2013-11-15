@@ -4,6 +4,7 @@
 #pragma comment(lib,"Shlwapi.lib")
 #include "iat_functions.h"
 #include "plug_ins.h"
+#include "DirCache.h"
 
 char LooseDirectory[MAX_PATH];
 size_t LooseDirectoryLength=0;
@@ -300,6 +301,10 @@ LPSTR WINAPI New_GetCommandLineA(void)
 			PrintLog("Patched steam_api.dll:SteamAPI_Shutdown.\n");
 
 		PrintLog("Saints Row Version = %i\n",GetSRVersion());
+	
+		CreateCache("dirlist.txt");
+		DumpCache();
+
 		WinMainCount++;
 	}
 

@@ -25,7 +25,7 @@ int GetSRVersion()
 
 	VerQueryValue(pResCopy, TEXT("\\"), (LPVOID*)&lpFfi, &uLen);
 
-	PrintLog("Query length = %i\n",uLen);
+	//PrintLog("Query length = %i\n",uLen);
 
 	DWORD dwFileVersionMS = lpFfi->dwFileVersionMS;
 	DWORD dwFileVersionLS = lpFfi->dwFileVersionLS;
