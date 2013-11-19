@@ -42,6 +42,14 @@ This will set the directory for the second level of redirection. The game will l
 
 If you set the -loose directory but not the -loosebase directory, the game will use the -loose directory as the -loosebase directory.
 
+-looselist:<file path of the mod file directory list file>
+
+This will allow you to use a simple text file to tell the game which directories to look for mod files in. The text file is just a list of directories, with each directory on it's own line. The first directory in the list has the highest priority, with the priority decreasing as it goes down the list. If you wish to include the vanilla directory in the search then type a single period "." for the directory and it will search the default Saints Row directory.
+
+Using -looselist will override the -loose and -loosebase settings. However it will be overidden when using the -vanilla parameter.
+
+If the file you specify doesn't exist or is blank then the game will act as if you used the -vanilla parameter.
+
 -vanilla
 
 This will stop the game from loading any mod files including any in the vanilla game directory. Basically it will start the game completely unmodded.
@@ -66,11 +74,15 @@ If the redirected directory is on a drive that doesn't exist the game runs reall
 
 *** Change log ***
 
+Version 3.0
+
+	Added directory caching and the abilty to search mod directories from a text file. (-looselist)
+
 Version 2.0
 
     Added 2 levels of redirection. (-loose and -loosebase)
 	Added support for vpp_pc files.
-	Added the -vanilla pararmeter.
+	Added the -vanilla parameter.
 	Started on plug-in file support by adding hooks for WinMain and the when the game quits.
 	Added support for Saints Row the Third.
 	

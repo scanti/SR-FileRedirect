@@ -10,6 +10,31 @@ char LooseDirectory[MAX_PATH];
 size_t LooseDirectoryLength=0;
 char MainDirectory[MAX_PATH];
 size_t MainDirectoryLength=0;
+char ListDirectory[MAX_PATH];
+
+bool HookList=false;
+
+void SetHookList(bool value)
+{
+	HookList=value;
+	return;
+}
+
+bool GetHookList()
+{
+	return(HookList);
+}
+
+void SetListDirectory(char *filepath)
+{
+	strcpy_s(ListDirectory,MAX_PATH,filepath);
+	return;
+}
+
+char *GetListDirectory()
+{
+	return(ListDirectory);
+}
 
 int WinMainCount=0;
 
@@ -278,6 +303,47 @@ if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
 	return(GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation));
 };
 
+HANDLE WINAPI FileList_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,
+						 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+						 DWORD dwFlagsAndAttributes,HANDLE hTemplateFile)
+
+{
+	const char *NewFileName;
+
+	if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
+	{
+		NewFileName=TranslateFilePath(lpFileName);
+		if(!NewFileName)
+			return(INVALID_HANDLE_VALUE);
+		return(CreateFileA(NewFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, 
+			dwFlagsAndAttributes, hTemplateFile));
+	}
+	
+	return(CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile));
+}
+
+BOOL WINAPI FileList_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
+								LPVOID lpFileInformation)
+{
+	FILEDATA *FoundData;
+
+	if ((_strnicmp(lpFileName,"display.ini",11)!=0) && PathIsRelativeA(lpFileName))
+	{
+		FoundData=TranslateFilePathData(lpFileName);
+		if(!FoundData)
+		{
+			SetLastError(ERROR_FILE_NOT_FOUND);
+			return(false);
+		}
+		memcpy(lpFileInformation,&FoundData->atrributes,sizeof(WIN32_FILE_ATTRIBUTE_DATA));
+		return(true);
+	}
+
+	return(GetFileAttributesExA(lpFileName, fInfoLevelId, lpFileInformation));
+};
+
+
 LPSTR WINAPI New_GetCommandLineA(void)
 {
 // The first time called it's by the CRT initialisation routines. This means the system is in
@@ -302,8 +368,11 @@ LPSTR WINAPI New_GetCommandLineA(void)
 
 		PrintLog("Saints Row Version = %i\n",GetSRVersion());
 	
-		CreateCache("dirlist.txt");
-		DumpCache();
+		if(HookList)
+		{
+			CreateCache(ListDirectory);
+			DumpCache();
+		}
 
 		WinMainCount++;
 	}
@@ -314,5 +383,6 @@ LPSTR WINAPI New_GetCommandLineA(void)
 int _stdcall QuittingGameHook()
 {
 	PrintLog("Hooked game quitting via SteamAPI_Shutdown.\n");
+	ClearDirCache();
 	return (Old_SteamAPI_Shutdown.func());
 }

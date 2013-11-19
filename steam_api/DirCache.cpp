@@ -3,16 +3,7 @@
 #include "stdafx.h"
 #include <algorithm>
 
-#include "Shlwapi.h"
-#pragma comment(lib,"Shlwapi.lib")
-
-struct FILEDATA
-{
-	std::string FilePath;
-	WIN32_FILE_ATTRIBUTE_DATA atrributes;
-};
-
-char *SearchList[3]=
+const char *SearchList[3]=
 {
 	"",
 	"tables\\",
@@ -40,10 +31,9 @@ bool CreateCache(char *DirListFile)
 {
 	DirListHandle=fopen(DirListFile,"r");
 	if(!DirListHandle)
-	{
-		PrintLog("Failed to open %s\n",DirListFile);
-		return(false);
-	}
+		PrintLog("ERROR - Failed to open directory list file %s\n",DirListFile);
+
+	PrintLog("Creating cache data from %s\n",DirListFile);
 
 	char CurrentDirectory[MAX_PATH];
 	char CurrentSearchDirectory[MAX_PATH];
@@ -58,7 +48,7 @@ bool CreateCache(char *DirListFile)
 
 // For the last iteration we want to only check the vpp_pc files in the game's root directory.
 
-		if(!fgets(CurrentDirectory,MAX_PATH,DirListHandle))
+		if(!DirListHandle || !fgets(CurrentDirectory,MAX_PATH,DirListHandle))
 		{
 			CurrentDirectory[0]=0;
 			SearchRootVPP=true;
@@ -107,8 +97,8 @@ bool CreateCache(char *DirListFile)
 
 				char *Extension=PathFindExtensionA(FileData.cFileName);
 
-				if(!stricmp(Extension,".txt") || !stricmp(Extension,".exe") || !stricmp(Extension,".dll") || 
-						!stricmp(Extension,".ini") || !strnicmp(Extension,".srtt",5))
+				if(!_stricmp(Extension,".txt") || !_stricmp(Extension,".exe") || !_stricmp(Extension,".dll") || 
+						!_stricmp(Extension,".ini") || !_strnicmp(Extension,".srtt",5))
 					continue;
 
 				strcpy_s(PathBuffer,MAX_PATH,SearchList[i]);
@@ -140,6 +130,8 @@ bool CreateCache(char *DirListFile)
 			FindClose(SearchDirHandle);
 		}
 	}
+	if(DirListHandle)
+		fclose(DirListHandle);
 	return(true);
 }
 
@@ -154,9 +146,43 @@ void DumpCache()
 	return;
 }
 
+const char *TranslateFilePath(const char *FilePath)
+{
+	std::string FilePathString(FilePath);
+	FilePathString=StringToLower(FilePathString);
 
 
+	std::map<std::string,FILEDATA>::iterator FoundFilePath;
 
+	FoundFilePath=DirCache.find(FilePathString);
+
+	if(FoundFilePath==DirCache.end())
+		return(NULL);
+
+	return(FoundFilePath->second.FilePath.c_str());
+}
+
+FILEDATA *TranslateFilePathData(const char *FilePath)
+{
+	std::string FilePathString(FilePath);
+	FilePathString=StringToLower(FilePathString);
+
+
+	std::map<std::string,FILEDATA>::iterator FoundFilePath;
+
+	FoundFilePath=DirCache.find(FilePathString);
+
+	if(FoundFilePath==DirCache.end())
+		return(NULL);
+
+	return(&FoundFilePath->second);
+}
+
+void ClearDirCache()
+{
+	DirCache.clear();
+	return;
+}
 
 		
 

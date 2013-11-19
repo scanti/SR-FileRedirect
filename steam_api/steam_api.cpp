@@ -160,12 +160,20 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 					HookLoose=true;
 					continue;
 				}
-				if(wcsncmp(ArgList[i],L"-loosebase:",11)==0)
+				if(wcsncmp(ArgList[i],L"-loosebase:",11)==0 && !GetHookList())
 				{
 					WideCharToMultiByte(CP_ACP,0,ArgList[i]+11,-1,NameBuffer,260,NULL,NULL);
 					PrintLog("Base file directory = %s\n",NameBuffer);
 					SetMainDirectory(NameBuffer);
 					HookMain=true;
+					continue;
+				}
+				if(wcsncmp(ArgList[i],L"-looselist:",11)==0)
+				{
+					WideCharToMultiByte(CP_ACP,0,ArgList[i]+11,-1,NameBuffer,260,NULL,NULL);
+					PrintLog("List directory = %s\n",NameBuffer);
+					SetListDirectory(NameBuffer);
+					SetHookList(true);
 					continue;
 				}
 				if(wcsncmp(ArgList[i],L"-vanilla",8)==0)
@@ -177,7 +185,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 
 			LocalFree(ArgList);
 
-			if(Vanilla)
+			if(Vanilla || GetHookList())
 			{
 				HookMain=false;
 				HookLoose=false;
@@ -216,6 +224,17 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 								(void *)MainOnly_GetFileAttributesExA,&old_proc)==S_OK)
 							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
 					}
+				}
+				if(GetHookList())
+				{
+						PrintLog("Hooking filing system for file list redirection.\n");
+						if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
+								(void *)FileList_CreateFileA,&old_proc)==S_OK)
+							PrintLog("Patched Kernel32.CreateFileA\n");
+
+						if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
+								(void *)FileList_GetFileAttributesExA,&old_proc)==S_OK)
+							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
 				}
 			}
 			else

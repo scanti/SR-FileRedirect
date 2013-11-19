@@ -2,6 +2,11 @@
 
 #include "stdafx.h"
 
+void SetHookList(bool value);
+bool GetHookList();
+void SetListDirectory(char *filepath);
+char *GetListDirectory();
+
 void SetLooseDirectory(char *filepath);
 char *GetLooseDirectory();
 void SetMainDirectory(char *filepath);
@@ -29,6 +34,12 @@ HANDLE WINAPI Redirect_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD
 BOOL WINAPI Redirect_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
 								LPVOID lpFileInformation);
 
+HANDLE WINAPI FileList_CreateFileA(LPCSTR lpFileName,DWORD dwDesiredAccess,DWORD dwShareMode,
+						 LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition,
+						 DWORD dwFlagsAndAttributes,HANDLE hTemplateFile);
+
+BOOL WINAPI FileList_GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId,
+								LPVOID lpFileInformation);
 
 LPSTR WINAPI New_GetCommandLineA(void);
 int _stdcall QuittingGameHook();
