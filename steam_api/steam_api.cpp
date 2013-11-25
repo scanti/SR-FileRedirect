@@ -139,23 +139,23 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 			bool HookMain=false;
 			bool Vanilla=false;
 
-			InitLogger("log.txt");
+			PrintLog=new FileLogger("looselog.txt");
 #ifdef SRTT
 			PrintLog("Initialize SRTT file redirector...\n");
 #else
-			PrintLog("Initialize SRIV file redirector...\n");
+			PrintLog->PrintSys("Initialize SRIV file redirector...\n");
 #endif
 			main_handle=GetModuleHandleA(NULL);
 			GetModuleFileNameA(main_handle,NameBuffer,260);
-			PrintLog("Module name = %s\n",NameBuffer);
+			PrintLog->PrintSys("Module name = %s\n",NameBuffer);
 			ArgList=CommandLineToArgvW(GetCommandLineW(),&NumArgs);
 			for(int i=1;i<NumArgs;i++)
 			{
-				PrintLog("Command line (%i) = %S\n",i,ArgList[i]);
+				PrintLog->PrintInfo("Command line (%i) = %S\n",i,ArgList[i]);
 				if (wcsncmp(ArgList[i],L"-loose:",7)==0)
 				{
 					WideCharToMultiByte(CP_ACP,0,ArgList[i]+7,-1,NameBuffer,260,NULL,NULL);
-					PrintLog("Loose file directory = %s\n",NameBuffer);
+					PrintLog->PrintSys("Loose file directory = %s\n",NameBuffer);
 					SetLooseDirectory(NameBuffer);
 					HookLoose=true;
 					continue;
@@ -163,7 +163,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 				if(wcsncmp(ArgList[i],L"-loosebase:",11)==0 && !GetHookList())
 				{
 					WideCharToMultiByte(CP_ACP,0,ArgList[i]+11,-1,NameBuffer,260,NULL,NULL);
-					PrintLog("Base file directory = %s\n",NameBuffer);
+					PrintLog->PrintSys("Base file directory = %s\n",NameBuffer);
 					SetMainDirectory(NameBuffer);
 					HookMain=true;
 					continue;
@@ -171,7 +171,7 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 				if(wcsncmp(ArgList[i],L"-looselist:",11)==0)
 				{
 					WideCharToMultiByte(CP_ACP,0,ArgList[i]+11,-1,NameBuffer,260,NULL,NULL);
-					PrintLog("List directory = %s\n",NameBuffer);
+					PrintLog->PrintSys("List directory = %s\n",NameBuffer);
 					SetListDirectory(NameBuffer);
 					SetHookList(true);
 					continue;
@@ -204,54 +204,54 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 				{
 					if(HookLoose)
 					{
-						PrintLog("Hooking filing system for redirection.\n");
+						PrintLog->PrintSys("Hooking filing system for redirection.\n");
 						if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
 									(void *)Redirect_CreateFileA,&old_proc)==S_OK)
-						PrintLog("Patched Kernel32.CreateFileA\n");
+							PrintLog->PrintSys("Patched Kernel32.CreateFileA\n");
 
 						if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
 								(void *)Redirect_GetFileAttributesExA,&old_proc)==S_OK)
-							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+							PrintLog->PrintSys("Patched Kernel32.GetFileAttributesExA\n");
 					}
 					else
 					{
-						PrintLog("Hooking filing system for Base only redirection.\n");
+						PrintLog->PrintSys("Hooking filing system for Base only redirection.\n");
 						if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
 								(void *)MainOnly_CreateFileA,&old_proc)==S_OK)
-							PrintLog("Patched Kernel32.CreateFileA\n");
+							PrintLog->PrintSys("Patched Kernel32.CreateFileA\n");
 
 						if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
 								(void *)MainOnly_GetFileAttributesExA,&old_proc)==S_OK)
-							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+							PrintLog->PrintSys("Patched Kernel32.GetFileAttributesExA\n");
 					}
 				}
 				if(GetHookList())
 				{
-						PrintLog("Hooking filing system for file list redirection.\n");
-						if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
-								(void *)FileList_CreateFileA,&old_proc)==S_OK)
-							PrintLog("Patched Kernel32.CreateFileA\n");
+					PrintLog->PrintSys("Hooking filing system for file list redirection.\n");
+					if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
+							(void *)FileList_CreateFileA,&old_proc)==S_OK)
+						PrintLog->PrintSys("Patched Kernel32.CreateFileA\n");
 
-						if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
-								(void *)FileList_GetFileAttributesExA,&old_proc)==S_OK)
-							PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+					if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
+							(void *)FileList_GetFileAttributesExA,&old_proc)==S_OK)
+						PrintLog->PrintSys("Patched Kernel32.GetFileAttributesExA\n");
 				}
 			}
 			else
 			{
-				PrintLog("Hooking filing system for Vanilla redirection.\n");
+				PrintLog->PrintSys("Hooking filing system for Vanilla redirection.\n");
 				if(PatchIat(main_handle,"Kernel32.dll","CreateFileA",
 						(void *)Vanilla_CreateFileA,&old_proc)==S_OK)
-					PrintLog("Patched Kernel32.CreateFileA\n");
+					PrintLog->PrintSys("Patched Kernel32.CreateFileA\n");
 
 				if(PatchIat(main_handle,"Kernel32.dll","GetFileAttributesExA",
 						(void *)Vanilla_GetFileAttributesExA,&old_proc)==S_OK)
-					PrintLog("Patched Kernel32.GetFileAttributesExA\n");
+					PrintLog->PrintSys("Patched Kernel32.GetFileAttributesExA\n");
 			}
 
 			if(PatchIat(main_handle,"Kernel32.dll","GetCommandLineA",
 					(void *)New_GetCommandLineA,&old_proc)==S_OK)
-				PrintLog("Patched Kernel32.GetCommandLineA\n");
+					PrintLog->PrintSys("Patched Kernel32.GetCommandLineA\n");
 
 			break;
 		}	 
@@ -268,8 +268,8 @@ BOOL WINAPI DllMain(HINSTANCE hInst,DWORD reason,LPVOID)
 
 		case DLL_PROCESS_DETACH:
 		{
-			PrintLog("Perform any necessary cleanup...\n");
-			CloseLogger();
+			PrintLog->PrintSys("Perform any necessary cleanup...\n");
+			delete(PrintLog);
 			break;
 		}
 

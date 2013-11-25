@@ -352,7 +352,7 @@ LPSTR WINAPI New_GetCommandLineA(void)
 	if (WinMainCount==0)
 	{
 		WinMainCount++;
-		PrintLog("GetCommandLineA called by CRT init.\n");
+		PrintLog->PrintInfo("GetCommandLineA called by CRT init.\n");
 		return(GetCommandLineA());
 	}
 
@@ -360,13 +360,13 @@ LPSTR WINAPI New_GetCommandLineA(void)
 
 	if(WinMainCount==1)
 	{
-		PrintLog("Hooked WinMain via GetCommandLineA\n");
+		PrintLog->PrintSys("Hooked WinMain via GetCommandLineA\n");
 		
 		if(PatchIat(GetModuleHandleA(NULL),"steam_api.dll","SteamAPI_Shutdown",
 			(void *)QuittingGameHook, &Old_SteamAPI_Shutdown.set)==S_OK)
-			PrintLog("Patched steam_api.dll:SteamAPI_Shutdown.\n");
+			PrintLog->PrintSys("Patched steam_api.dll:SteamAPI_Shutdown.\n");
 
-		PrintLog("Saints Row Version = %i\n",GetSRVersion());
+		PrintLog->PrintInfo("Saints Row Version = %i\n",GetSRVersion());
 	
 		if(HookList)
 		{
@@ -382,7 +382,7 @@ LPSTR WINAPI New_GetCommandLineA(void)
 
 int _stdcall QuittingGameHook()
 {
-	PrintLog("Hooked game quitting via SteamAPI_Shutdown.\n");
+	PrintLog->PrintSys("Hooked game quitting via SteamAPI_Shutdown.\n");
 	ClearDirCache();
 	return (Old_SteamAPI_Shutdown.func());
 }

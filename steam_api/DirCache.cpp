@@ -31,9 +31,9 @@ bool CreateCache(char *DirListFile)
 {
 	DirListHandle=fopen(DirListFile,"r");
 	if(!DirListHandle)
-		PrintLog("ERROR - Failed to open directory list file %s\n",DirListFile);
+		PrintLog->PrintError("ERROR - Failed to open directory list file %s\n",DirListFile);
 
-	PrintLog("Creating cache data from %s\n",DirListFile);
+	PrintLog->PrintSys("Creating cache data from %s\n",DirListFile);
 
 	char CurrentDirectory[MAX_PATH];
 	char CurrentSearchDirectory[MAX_PATH];
@@ -122,8 +122,11 @@ bool CreateCache(char *DirListFile)
 					PushData.atrributes.ftLastWriteTime=FileData.ftLastWriteTime;
 					PushData.atrributes.nFileSizeHigh=FileData.nFileSizeHigh;
 					PushData.atrributes.nFileSizeLow=FileData.nFileSizeLow;
+					PushData.MultiDef=false;
 					DirCache[SearchFileName]=PushData;
 				}
+				else
+					itDirCache->second.MultiDef=true;
 				
 			} while(FindNextFileA(SearchDirHandle,&FileData));
 			
@@ -137,12 +140,15 @@ bool CreateCache(char *DirListFile)
 
 void DumpCache()
 {
-	PrintLog("Directory cache :\n");
+	PrintLog->PrintInfo("Directory cache :\n");
 	for(std::map<std::string,FILEDATA>::iterator DumpRecord = DirCache.begin(), itr_end = DirCache.end(); DumpRecord != itr_end; ++DumpRecord)
 	{
-		PrintLog("%s -> %s\n",DumpRecord->first.c_str(),DumpRecord->second.FilePath.c_str());
+		if(DumpRecord->second.MultiDef)
+			PrintLog->PrintWarn("%s -> %s (Multiple definitions)\n",DumpRecord->first.c_str(),DumpRecord->second.FilePath.c_str());
+		else
+			PrintLog->PrintInfo("%s -> %s\n",DumpRecord->first.c_str(),DumpRecord->second.FilePath.c_str());
 	}
-	PrintLog("*** End of Directory Cache ***\n");
+	PrintLog->PrintInfo("*** End of Directory Cache ***\n");
 	return;
 }
 

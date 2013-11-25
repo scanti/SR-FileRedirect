@@ -10,6 +10,7 @@ struct FILEDATA
 {
 	std::string FilePath;
 	WIN32_FILE_ATTRIBUTE_DATA atrributes;
+	bool MultiDef;
 };
 
 bool CreateCache(char *DirListFile);

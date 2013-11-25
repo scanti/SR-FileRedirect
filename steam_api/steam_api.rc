@@ -69,12 +69,20 @@ BEGIN
     BEGIN
         BLOCK "080904b0"
         BEGIN
-            VALUE "FileDescription", "SRIV file redirector"
+#ifdef SRTT
+            VALUE "FileDescription", "SRTT file redirector"
+#else
+			VALUE "FileDescription", "SRIV file redirector"
+#endif
             VALUE "FileVersion", "1, 0, 0, 3"
             VALUE "InternalName", "steam_api"
             VALUE "LegalCopyright", "Copyright (C) 2013"
             VALUE "OriginalFilename", "steam_api.dll"
-            VALUE "ProductName", "SRIV file redirector"
+#ifdef SRTT
+            VALUE "ProductName", "SRTT file redirector"
+#else
+			VALUE "ProductName", "SRIV file redirector"
+#endif
             VALUE "ProductVersion", "1, 0, 0, 3"
         END
     END
